@@ -7,6 +7,7 @@
 import paho.mqtt.client as mqtt
 import time
 
+# Handling incoming messages
 def on_message(client, userdata, msg):
     topic = msg.topic
     payload = msg.payload.decode()
@@ -14,11 +15,21 @@ def on_message(client, userdata, msg):
     # Routing Logic
     if topic == "ESP32/1/light/state":
         print(f"Device update: {payload}")
+        
+def on_connect(client, userdata, flags, rc, properties):
+    print("Connected with result code "+str(rc))
+    
+def on_subscribe(client, userdata, mid, reason_codes, properties):
+    print("Subscribed to topic with QoS: " + str(reason_codes[0]))
 
 
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.on_message = on_message
+client.on_connect = on_connect
+client.on_subscribe = on_subscribe
+
+
 
 
 client.connect("localhost", 1883)       # Connect to the MQTT broker (adjust host and port as needed)
@@ -28,6 +39,7 @@ client.subscribe("ESP32/1/light/state")    # Subscribe to topic to receive updat
 # rest of your script can keep moving or stay alive.
 client.loop_start()
 
+# Handling Outgoing Messages
 try:
     while True:
         # Your "Brain" can do other things here, 
@@ -38,3 +50,4 @@ try:
         client.publish("ESP32/1/light", "off")
 except KeyboardInterrupt:
     client.loop_stop()
+    client.disconnect()
