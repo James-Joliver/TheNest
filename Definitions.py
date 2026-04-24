@@ -13,7 +13,9 @@ class States(Enum):
     FINAL_POS_PUSH     = auto()   # Position Push To Final Position Process Initiated
     FINAL_POS_REL      = auto()   # Release Drone for Flight
     
+    
 
-ESP_SWAP_CONNECTED = False
-ESP_POS_CONNECTED = False
-DRONE_CONNECTED = False
+
+#ESP_SWAP_CONNECTED = False
+#ESP_POS_CONNECTED = False
+#DRONE_CONNECTED = False
