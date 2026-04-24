@@ -1,25 +1,15 @@
 import paho.mqtt.client as mqtt
 import time
 import Definitions
-from Definitions import States
+from Definitions import States, SystemState
 
 
 
-global STATE
-global ESP_SWAP_CONNECTED
-global ESP_POS_CONNECTED
-global DRONE_CONNECTED 
 
-ESP_SWAP_CONNECTED = False
-ESP_POS_CONNECTED = False
-DRONE_CONNECTED = False
+sys = SystemState()
 
 def on_message(client, userdata, msg):
 
-    global STATE
-    global ESP_SWAP_CONNECTED
-    global ESP_POS_CONNECTED
-    global DRONE_CONNECTED 
 
     topic = msg.topic.split("/")
     payload = msg.payload.decode()
@@ -30,35 +20,35 @@ def on_message(client, userdata, msg):
         case ["ESP", "SWAP", "Status"]:
             print(f"Swap Status Update: {payload}")
             if payload == "Connected":
-                ESP_SWAP_CONNECTED = True
+                sys.ESP_SWAP_CONNECTED = True
 
             elif payload == "Disconnected":            
-                ESP_SWAP_CONNECTED = False
-                STATE = States.STBY
+                sys.ESP_SWAP_CONNECTED = False
+                sys.STATE = States.STBY
                 client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
 
         case ["ESP", "POS", "Status"]:
             print(f"Position Status Update: {payload}")
             if payload == "Connected":
-                ESP_POS_CONNECTED = True
+                sys.ESP_POS_CONNECTED = True
 
             elif payload == "Disconnected":            
-                ESP_POS_CONNECTED = False
-                STATE = States.STBY
+                sys.ESP_POS_CONNECTED = False
+                sys.STATE = States.STBY
                 client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
                 
         case ["DRONE", "Status"]:
             print(f"Drone Status Update: {payload}")
             if payload == "Connected":
-                DRONE_CONNECTED = True
+                sys.DRONE_CONNECTED = True
 
             elif payload == "Disconnected":            
-                DRONE_CONNECTED = False
+                sys.DRONE_CONNECTED = False
                 if STATE != States.STBY:    # Always go to STBY if ESPs are disconnected aswell
-                    STATE = States.STBY_READY
+                    sys.STATE = States.STBY_READY
                     client.publish("NEST/System/Status", "STBY_READY", qos=2, retain=True)
                 else:
-                    STATE = States.STBY
+                    sys.STATE = States.STBY
                     client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
                 
 
@@ -88,7 +78,7 @@ client.subscribe("DRONE/Status")
 
 
 
-STATE = States.STBY
+sys.STATE = States.STBY
 
 
 client.publish("ESP/SWAP/Status", "TEST", qos=2)
@@ -101,17 +91,17 @@ try:
 
 
     while True:
-        match STATE:
+        match sys.STATE:
             case States.STBY:
-                print("ESP_SWAP_CONNECTED: " + str(ESP_SWAP_CONNECTED) + " | ESP_POS_CONNECTED: " + str(ESP_POS_CONNECTED))
-                if ESP_SWAP_CONNECTED and ESP_POS_CONNECTED:
-                    STATE = States.STBY_READY
+                print("ESP_SWAP_CONNECTED: " + str(sys.ESP_SWAP_CONNECTED) + " | ESP_POS_CONNECTED: " + str(sys.ESP_POS_CONNECTED))
+                if sys.ESP_SWAP_CONNECTED and sys.ESP_POS_CONNECTED:
+                    sys.STATE = States.STBY_READY
                     client.publish("NEST/System/Status", "STBY_READY", qos=2, retain=True)
-                    print(f"State: {STATE}")
-                elif ESP_SWAP_CONNECTED and not ESP_POS_CONNECTED:
+                    print(f"State: {sys.STATE}")
+                elif sys.ESP_SWAP_CONNECTED and not sys.ESP_POS_CONNECTED:
                     print("Waiting for Position ESP to Connect...")
                     time.sleep(1)
-                elif not ESP_SWAP_CONNECTED and ESP_POS_CONNECTED:
+                elif not sys.ESP_SWAP_CONNECTED and sys.ESP_POS_CONNECTED:
                     print("Waiting for Swap ESP to Connect...")
                     time.sleep(1)
                 else:
@@ -119,19 +109,19 @@ try:
                 time.sleep(1)
 
             case States.STBY_READY:
-                if DRONE_CONNECTED:
-                    STATE = States.STBY_DRONE_LAND
+                if sys.DRONE_CONNECTED:
+                    sys.STATE = States.STBY_DRONE_LAND
                     client.publish("NEST/System/Status", "STBY_DRONE_LAND", qos=2, retain=True)
-                    print(f"State: {STATE}")
+                    print(f"State: {sys.STATE}")
                 else:
                     print("Waiting for Drone to Connect...")
                     time.sleep(1)
             
             case States.STBY_DRONE_LAND:
-                if DRONE_CONNECTED:
-                    STATE = States.POS_PINCH
+                if sys.DRONE_CONNECTED:
+                    sys.STATE = States.POS_PINCH
                     client.publish("NEST/System/Status", "POS_PINCH", qos=2, retain=True)
-                    print(f"State: {STATE}")
+                    print(f"State: {sys.STATE}")
                 else:
                     print("Waiting for Drone to Land...")
                     time.sleep(1)
@@ -141,7 +131,7 @@ try:
                 time.sleep(1)
                     
 
-        print("Current State: " + str(STATE))
+        print("Current State: " + str(sys.STATE))
 
 
 except KeyboardInterrupt:

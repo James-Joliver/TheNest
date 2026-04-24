@@ -15,7 +15,10 @@ class States(Enum):
     
     
 
+class SystemState:
+    def __init__(self):
+        self.STATE = States.STBY
+        self.ESP_SWAP_CONNECTED = False
+        self.ESP_POS_CONNECTED = False
+        self.DRONE_CONNECTED = False
 
-#ESP_SWAP_CONNECTED = False
-#ESP_POS_CONNECTED = False
-#DRONE_CONNECTED = False
