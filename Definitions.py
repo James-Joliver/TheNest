@@ -20,6 +20,7 @@ class SystemState:
         self.STATE = States.STBY
         self.ESP_SWAP_CONNECTED = False
         self.ESP_POS_CONNECTED = False
+        self.DRONE_CONNECTED = False
         self.DRONE_COMPLETE = False
         self.PINCH_COMPLETE = False
         self.PUSH_COMPLETE = False

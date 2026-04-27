@@ -44,10 +44,11 @@ try:
     while True:
         # Your "Brain" can do other things here, 
         # like periodic health checks or heartbeats.
-        time.sleep(1)
-        client.publish("ESP32/1/light", "on")
-        time.sleep(1)
-        client.publish("ESP32/1/light", "off")
+        time.sleep(3)
+        client.publish("NEST/System/State", "on")
+        time.sleep(3)
+        client.publish("NEST/System/State", "off")
+
 except KeyboardInterrupt:
     client.loop_stop()
     client.disconnect()

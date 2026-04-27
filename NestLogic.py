@@ -41,18 +41,47 @@ def on_message(client, userdata, msg):
 
             elif payload == "Disconnected":            
                 sys.DRONE_CONNECTED = False
-                if STATE != States.STBY:    # Always go to STBY if ESPs are disconnected aswell
+                if sys.STATE != States.STBY:    # Always go to STBY if ESPs are disconnected aswell
                     sys.STATE = States.STBY_READY
                     client.publish("NEST/System/Status", "STBY_READY", qos=2, retain=True)
                 else:
                     sys.STATE = States.STBY
                     client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
+
         case ["ESP", "POS", "Pinch", "State"]:
-            print(f"Drone Status Update: {payload}")
+            print(f"POS Pinch Update: {payload}")
             if payload == "Complete":
-                sys.ESP_P
+                sys.PINCH_COMPLETE = True
             
-                
+            elif payload == "In Progress":
+                print("Pinch in Progress")
+            
+            else:
+                print("Pinch Failure")
+
+        case ["ESP", "POS", "Push", "State"]:
+            print(f"POS Push Update: {payload}")
+            if payload == "Complete":
+                sys.PUSH_COMPLETE = True
+                print("EPIC COMPLETE FOR REAL")
+            
+            elif payload == "In Progress":
+                print("Push in Progress")
+
+            else:
+                print("Push Failure")
+        
+        case ["ESP", "SWAP", "Align", "State"]:
+            print(f"SWAP Alignment update: {payload}")
+            if payload == "Complete":
+                sys.ALIGN_COMPLETE = True
+            
+            elif payload == "In Progress":
+                print("Alignment in progress")
+
+            else:
+                print("Alignment Failure")
+
 
 
 def on_connect(client, userdata, flags, rc, properties):
@@ -74,9 +103,7 @@ client.connect("localhost", 1883)
 
 client.loop_start()
 
-client.subscribe("ESP/SWAP/Status")
-client.subscribe("ESP/POS/Status")
-client.subscribe("DRONE/Status")
+client.subscribe("#")
 
 
 
@@ -86,6 +113,7 @@ sys.STATE = States.STBY
 client.publish("ESP/SWAP/Status", "TEST", qos=2)
 client.publish("ESP/POS/Status", "TEST", qos=2)
 client.publish("DRONE/Status", "TEST", qos=2)
+
 
 
 
@@ -102,18 +130,15 @@ try:
                     print(f"State: {sys.STATE}")
                 elif sys.ESP_SWAP_CONNECTED and not sys.ESP_POS_CONNECTED:
                     print("Waiting for Position ESP to Connect...")
-                    time.sleep(1)
                 elif not sys.ESP_SWAP_CONNECTED and sys.ESP_POS_CONNECTED:
                     print("Waiting for Swap ESP to Connect...")
-                    time.sleep(1)
                 else:
                     print("Waiting for ESPs to Connect...")
-                time.sleep(1)
 
             case States.STBY_READY:
                 if sys.DRONE_CONNECTED:
                     sys.STATE = States.STBY_DRONE_LAND
-                    client.publish("NEST/System/Status", "STBY_DRONE_LAND", qos=2, retain=True)
+                    client.publish("NEST/System/State", "STBY_DRONE_LAND", qos=2, retain=True)
                     print(f"State: {sys.STATE}")
                 else:
                     print("Waiting for Drone to Connect...")
@@ -122,7 +147,7 @@ try:
             case States.STBY_DRONE_LAND:
                 if sys.DRONE_CONNECTED:
                     sys.STATE = States.POS_PINCH
-                    client.publish("NEST/System/Status", "POS_PINCH", qos=2, retain=True)
+                    client.publish("NEST/System/State", "POS_PINCH", qos=2, retain=True)
                     print(f"State: {sys.STATE}")
                 else:
                     print("Waiting for Drone to Land...")
@@ -133,12 +158,19 @@ try:
                 time.sleep(1)
                 if sys.PINCH_COMPLETE:
                     sys.STATE = States.POS_PUSH
-                    client.publish("NEST/System/Status", "POS_PUSH", qos=2, retain=True)
+                    client.publish("NEST/System/State", "POS_PUSH", qos=2, retain=True)
                     print(f"State: {sys.STATE}")
-
-            
                     
-
+            case States.POS_PUSH:
+                print("Initiating Position PUSH Process...")
+                time.sleep(1)
+                if sys.PUSH_COMPLETE:
+                    sys.STATE = States.SWAP_ALIGN
+                    client.publish("NEST/System/State", "SWAP_ALIGN", qos=2, retain=True)
+                    print(f"State: {sys.STATE}")
+            
+                
+        time.sleep(2) 
         print("Current State: " + str(sys.STATE))
 
 
