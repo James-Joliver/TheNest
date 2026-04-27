@@ -3,9 +3,6 @@ import time
 import Definitions
 from Definitions import States, SystemState
 
-
-
-
 sys = SystemState()
 
 def on_message(client, userdata, msg):
@@ -50,6 +47,11 @@ def on_message(client, userdata, msg):
                 else:
                     sys.STATE = States.STBY
                     client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
+        case ["ESP", "POS", "Pinch", "State"]:
+            print(f"Drone Status Update: {payload}")
+            if payload == "Complete":
+                sys.ESP_P
+            
                 
 
 
@@ -129,6 +131,12 @@ try:
             case States.POS_PINCH:
                 print("Initiating Position Pinch Process...")
                 time.sleep(1)
+                if sys.PINCH_COMPLETE:
+                    sys.STATE = States.POS_PUSH
+                    client.publish("NEST/System/Status", "POS_PUSH", qos=2, retain=True)
+                    print(f"State: {sys.STATE}")
+
+            
                     
 
         print("Current State: " + str(sys.STATE))
