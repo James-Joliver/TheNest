@@ -9,15 +9,20 @@ class States(Enum):
     SWAP_ALIGN         = auto()   # Swap Alignment Process Initiated
     SWAP_REMOVE        = auto()   # Swap Removal Process Initiated
     SWAP_INSERT        = auto()   # Swap Inert Process Initiated
-    SWAP_CONNECT       = auto()   # Attempt to Reconnect to Drone
-    FINAL_POS_PUSH     = auto()   # Position Push To Final Position Process Initiated
-    FINAL_POS_REL      = auto()   # Release Drone for Flight
+    RECONNECT          = auto()   # Attempt to reconnect with Drone
+    SEND_OFF           = auto()   # Confirm a return to STBY_READY and reset states
+
     
     
 
 class SystemState:
     def __init__(self):
+        self.reset()
+
+
+    def reset(self):
         self.STATE = States.STBY
+        self.DRONE_LANDED = False
         self.ESP_SWAP_CONNECTED = False
         self.ESP_POS_CONNECTED = False
         self.DRONE_CONNECTED = False
@@ -27,4 +32,6 @@ class SystemState:
         self.ALIGN_COMPLETE = False
         self.REMOVE_COMPLETE = False
         self.INSERT_COMPLETE = False
+        self.BATTERY_CONNECTED = True
+        self.SEND_OFF_CONFIRM = False
 

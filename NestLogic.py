@@ -10,6 +10,9 @@ def on_message(client, userdata, msg):
 
     topic = msg.topic.split("/")
     payload = msg.payload.decode()
+    if payload == "rest":
+        return
+
     print(f"Received message on topic {topic}: {payload}")
     
     
@@ -22,7 +25,7 @@ def on_message(client, userdata, msg):
             elif payload == "Disconnected":            
                 sys.ESP_SWAP_CONNECTED = False
                 sys.STATE = States.STBY
-                client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
+                client.publish("NEST/System/State", "STBY", qos=2, retain=True)
 
         case ["ESP", "POS", "Status"]:
             print(f"Position Status Update: {payload}")
@@ -32,7 +35,7 @@ def on_message(client, userdata, msg):
             elif payload == "Disconnected":            
                 sys.ESP_POS_CONNECTED = False
                 sys.STATE = States.STBY
-                client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
+                client.publish("NEST/System/State", "STBY", qos=2, retain=True)
                 
         case ["DRONE", "Status"]:
             print(f"Drone Status Update: {payload}")
@@ -41,47 +44,80 @@ def on_message(client, userdata, msg):
 
             elif payload == "Disconnected":            
                 sys.DRONE_CONNECTED = False
-                if sys.STATE != States.STBY:    # Always go to STBY if ESPs are disconnected aswell
+                if sys.STATE != States.STBY and sys.BATTERY_CONNECTED:    # Always go to STBY if ESPs are disconnected aswell
                     sys.STATE = States.STBY_READY
-                    client.publish("NEST/System/Status", "STBY_READY", qos=2, retain=True)
+                    client.publish("NEST/System/State", "STBY_READY", qos=2, retain=True)
+                elif not sys.BATTERY_CONNECTED:
+                    print("Battery Successfully Connected From Drone")
                 else:
                     sys.STATE = States.STBY
-                    client.publish("NEST/System/Status", "STBY", qos=2, retain=True)
+                    client.publish("NEST/System/State", "STBY", qos=2, retain=True)
 
-        case ["ESP", "POS", "Pinch", "State"]:
+        case ["DRONE", "LANDED"]:
+            print(f"Drone Landing Update: {payload}")
+            if payload == "Ready":
+                sys.DRONE_LANDED = True
+            else:
+                print("Not landed propperly")
+        
+
+        case ["ESP", "POS", "Pinch"]:
             print(f"POS Pinch Update: {payload}")
             if payload == "Complete":
                 sys.PINCH_COMPLETE = True
-            
             elif payload == "In Progress":
                 print("Pinch in Progress")
-            
             else:
                 print("Pinch Failure")
 
-        case ["ESP", "POS", "Push", "State"]:
+        case ["ESP", "POS", "Push"]:
             print(f"POS Push Update: {payload}")
             if payload == "Complete":
                 sys.PUSH_COMPLETE = True
-                print("EPIC COMPLETE FOR REAL")
-            
+
             elif payload == "In Progress":
                 print("Push in Progress")
 
             else:
                 print("Push Failure")
         
-        case ["ESP", "SWAP", "Align", "State"]:
+        case ["ESP", "SWAP", "Align"]:
             print(f"SWAP Alignment update: {payload}")
             if payload == "Complete":
                 sys.ALIGN_COMPLETE = True
-            
+
             elif payload == "In Progress":
                 print("Alignment in progress")
+                
+            else:
+                print("Alignment Failure")
+        
+        case ["ESP", "SWAP", "Remove"]:
+            print(f"SWAP Removeal update: {payload}")
+            if payload == "Complete":
+                sys.REMOVE_COMPLETE = True
+
+            elif payload == "In Progress":
+                print("Removal In Progress")
+
+            else:
+                print("Removal Failure")
+        
+        case ["ESP", "SWAP", "Insert"]:
+            print(f"SWAP Insertion update: {payload}")
+            if payload == "Complete":
+                sys.INSERT_COMPLETE = True
+
+            elif payload == "In Progress":
+                print("Alignment In Progress")
 
             else:
                 print("Alignment Failure")
-
+        
+        case ["DRONE", "SEND_OFF"]:
+            if payload == "Ready":
+                sys.SEND_OFF_CONFIRM = True
+        
 
 
 def on_connect(client, userdata, flags, rc, properties):
@@ -99,6 +135,8 @@ client.on_message = on_message
 client.on_connect = on_connect
 client.on_subscribe = on_subscribe
 
+client.will_set("NEST/Status", "Disconnected", qos=2, retain=True)
+
 client.connect("localhost", 1883)       
 
 client.loop_start()
@@ -109,10 +147,17 @@ client.subscribe("#")
 
 sys.STATE = States.STBY
 
-
-client.publish("ESP/SWAP/Status", "TEST", qos=2)
-client.publish("ESP/POS/Status", "TEST", qos=2)
-client.publish("DRONE/Status", "TEST", qos=2)
+client.publish("NEST/System/State", "rest", qos=2)
+client.publish("ESP/SWAP/Status", "Connected", qos=2)
+client.publish("ESP/POS/Status", "Connected", qos=2)
+client.publish("DRONE/Status", "Connected", qos=2)
+client.publish("ESP/POS/Pinch", "rest", qos=2)
+client.publish("ESP/POS/Push", "rest", qos=2)
+client.publish("ESP/SWAP/Align", "rest", qos=2)
+client.publish("ESP/SWAP/Remove", "rest", qos=2)
+client.publish("ESP/SWAP/Insert", "rest", qos=2)
+client.publish("DRONE/SEND_OFF","rest", qos=2)
+client.publish("DRONE/LANDED", "rest", qos=2)
 
 
 
@@ -126,7 +171,7 @@ try:
                 print("ESP_SWAP_CONNECTED: " + str(sys.ESP_SWAP_CONNECTED) + " | ESP_POS_CONNECTED: " + str(sys.ESP_POS_CONNECTED))
                 if sys.ESP_SWAP_CONNECTED and sys.ESP_POS_CONNECTED:
                     sys.STATE = States.STBY_READY
-                    client.publish("NEST/System/Status", "STBY_READY", qos=2, retain=True)
+                    client.publish("NEST/System/State", "STBY_READY", qos=2, retain=True)
                     print(f"State: {sys.STATE}")
                 elif sys.ESP_SWAP_CONNECTED and not sys.ESP_POS_CONNECTED:
                     print("Waiting for Position ESP to Connect...")
@@ -140,22 +185,21 @@ try:
                     sys.STATE = States.STBY_DRONE_LAND
                     client.publish("NEST/System/State", "STBY_DRONE_LAND", qos=2, retain=True)
                     print(f"State: {sys.STATE}")
+                elif not sys.BATTERY_CONNECTED:
+                    sys.STATE = State.SWAP_ALIGN
                 else:
                     print("Waiting for Drone to Connect...")
-                    time.sleep(1)
             
             case States.STBY_DRONE_LAND:
-                if sys.DRONE_CONNECTED:
+                if sys.DRONE_LANDED:
                     sys.STATE = States.POS_PINCH
                     client.publish("NEST/System/State", "POS_PINCH", qos=2, retain=True)
                     print(f"State: {sys.STATE}")
                 else:
                     print("Waiting for Drone to Land...")
-                    time.sleep(1)
                     
             case States.POS_PINCH:
                 print("Initiating Position Pinch Process...")
-                time.sleep(1)
                 if sys.PINCH_COMPLETE:
                     sys.STATE = States.POS_PUSH
                     client.publish("NEST/System/State", "POS_PUSH", qos=2, retain=True)
@@ -163,11 +207,72 @@ try:
                     
             case States.POS_PUSH:
                 print("Initiating Position PUSH Process...")
-                time.sleep(1)
                 if sys.PUSH_COMPLETE:
                     sys.STATE = States.SWAP_ALIGN
-                    client.publish("NEST/System/State", "SWAP_ALIGN", qos=2, retain=True)
+                    client.publish("NEST/System/State", "SWAP_ALIGN_EMPTY", qos=2, retain=True)
                     print(f"State: {sys.STATE}")
+        
+            case States.SWAP_ALIGN:
+                print("Initiating Alignment Process...")
+                if sys.ALIGN_COMPLETE and sys.BATTERY_CONNECTED:
+                    sys.STATE = States.SWAP_REMOVE
+                    client.publish("NEST/System/State", "SWAP_REMOVE", qos=2, retain=True)
+                    sys.ALIGN_COMPLETE = False
+                    print(f"State: {sys.STATE}")
+                
+                elif sys.ALIGN_COMPLETE and not sys.BATTERY_CONNECTED:
+                    sys.STATE = States.SWAP_INSERT
+                    client.publish("NEST/System/State", "SWAP_INSERT", qos=2, retain=True)
+                    sys.ALIGN_COMPLETE = False
+                    print(f"State: {sys.STATE}")
+            
+            case States.SWAP_REMOVE:
+                print("Initiating Removal Process...")
+                sys.BATTERY_CONNECTED = False
+            
+                if sys.REMOVE_COMPLETE:
+                    sys.STATE = States.SWAP_ALIGN
+                    client.publish("NEST/System/State", "SWAP_ALIGN_NEW", qos=2, retain=True)
+
+                
+            case States.SWAP_INSERT:
+                print("Initiating Insertion Process...")
+                
+                if sys.INSERT_COMPLETE:
+                    sys.BATTERY_CONNECTED = True
+                    sys.STATE = States.RECONNECT
+                    client.publish("NEST/System/State", "RECONNECT", qos=2, retain=True)
+                
+            case States.RECONNECT:
+                print("Reconnecting with drone to confirm battery swap")
+
+                if sys.DRONE_CONNECTED:
+                    sys.STATE = States.SEND_OFF
+                    client.publish("NEST/System/State", "SEND_OFF", qos=2, retain=True)
+            
+            case States.SEND_OFF:
+                print("Sending Drone Away")
+                
+                if sys.SEND_OFF_CONFIRM:
+
+                    sys.reset()
+                    client.publish("NEST/System/State", "rest", qos=2)
+                    client.publish("DRONE/Status", "rest", qos=2)
+                    client.publish("DRONE/Landed", "rest", qos=2)
+                    client.publish("ESP/POS/Pinch", "rest", qos=2)
+                    client.publish("ESP/POS/Push", "rest", qos=2)
+                    client.publish("ESP/SWAP/Align", "rest", qos=2)
+                    client.publish("ESP/SWAP/Remove", "rest", qos=2)
+                    client.publish("ESP/SWAP/Insert", "rest", qos=2)
+                    client.publish("DRONE/SEND_OFF","rest", qos=2)
+
+                    sys.STATE = States.STBY_READY
+                    client.publish("NEST/System/State", "STBY_READY", qos=2, retain=True)
+
+
+                
+                
+
             
                 
         time.sleep(2) 
