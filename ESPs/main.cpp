@@ -215,12 +215,6 @@ void MQTT_Task(void * pvParameters) {
 
 void loop()
 {
-  findZero();
-  delay(10000);
-  alignEmpty();
-  delay(10000);
-  alignNew();
-  delay(100000);
 }
 
 
@@ -345,14 +339,6 @@ void moveStep()
       delayMicroseconds(500);
 }
 
-/*void checkStallGuard()
-{
-  if (digitalRead(DIAG_PIN) == 1)
-  {
-    Serial.println("Hit wall");
-    digitalWrite(EN_PIN, HIGH);
-  }
-}*/
 
 void findZero()
 {
