@@ -77,7 +77,7 @@ void MQTT_Task(void * pvParameters);
     // Variables
     int stepTime;
     int microstepts = 8;
-    int stepThreshold = 50;
+    int stepThreshold = 30;
     int location;
 
 // Function that listens for commands from pi
