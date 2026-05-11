@@ -141,7 +141,9 @@ client.connect("localhost", 1883)
 
 client.loop_start()
 
-client.subscribe("#")
+client.subscribe("ESP/SWAP/#")
+client.subscribe("ESP/POS/#")
+client.subscribe("DRONE/#")
 
 
 
@@ -269,11 +271,6 @@ try:
                     sys.STATE = States.STBY_READY
                     client.publish("NEST/System/State", "STBY_READY", qos=2, retain=True)
 
-
-                
-                
-
-            
                 
         time.sleep(2) 
         print("Current State: " + str(sys.STATE))
