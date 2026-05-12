@@ -97,6 +97,8 @@ void callback(char *topic, byte *payload, unsigned int length)
         if (payloadStr == "SWAP_ALIGN_EMPTY")
         {
             // Serial.println("Align to rail 1");
+            findZero();
+            delay(10);
             alignEmpty();
         }
         else if (payloadStr == "SWAP_REMOVE")
